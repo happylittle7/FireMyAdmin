@@ -12,7 +12,10 @@
   --surface-border-dashed: rgba(31, 41, 51, 0.12);
   --overlay: rgba(31, 41, 51, 0.18);
   --input-bg: #fffcf7;
+  --input-border: #d7cebf;
+  --input-focus-ring: rgba(20, 99, 86, 0.16);
   --secondary-button-bg: #e9e2d6;
+  --secondary-button-border: #d0c4b1;
   --primary-button-bg: #146356;
   --primary-button-text: #ffffff;
   --type-chip-bg: #1f2937;
@@ -25,6 +28,8 @@
   --card-hover-border: rgba(20, 99, 86, 0.22);
   --callout-bg: linear-gradient(180deg, rgba(20, 99, 86, 0.06), rgba(20, 99, 86, 0.01));
   --callout-border: rgba(20, 99, 86, 0.12);
+  --table-header-bg: rgba(31, 41, 51, 0.04);
+  --table-row-hover: rgba(20, 99, 86, 0.05);
   --hero-bg: linear-gradient(135deg, rgba(255, 253, 248, 0.98), rgba(243, 239, 231, 0.96));
   --hero-glow: rgba(20, 99, 86, 0.08);
   --folder-highlight: rgba(255, 255, 255, 0.4);
@@ -54,7 +59,10 @@
   --surface-border-dashed: rgba(255, 248, 238, 0.14);
   --overlay: rgba(8, 8, 8, 0.42);
   --input-bg: #201c1a;
+  --input-border: #665a51;
+  --input-focus-ring: rgba(130, 212, 188, 0.22);
   --secondary-button-bg: #3b332f;
+  --secondary-button-border: #605348;
   --primary-button-bg: #82d4bc;
   --primary-button-text: #16211e;
   --type-chip-bg: #f7efe6;
@@ -66,6 +74,8 @@
   --card-bg: linear-gradient(180deg, rgba(55, 47, 42, 0.94), rgba(35, 30, 27, 0.94));
   --callout-bg: linear-gradient(180deg, rgba(182, 132, 72, 0.15), rgba(182, 132, 72, 0.04));
   --callout-border: rgba(223, 171, 63, 0.18);
+  --table-header-bg: rgba(255, 248, 238, 0.06);
+  --table-row-hover: rgba(245, 195, 109, 0.08);
   --hero-bg: linear-gradient(135deg, rgba(49, 42, 38, 0.98), rgba(31, 27, 25, 0.96));
   --hero-glow: rgba(223, 171, 63, 0.12);
   --folder-highlight: rgba(255, 255, 255, 0.18);
@@ -95,7 +105,10 @@
   --surface-border-dashed: rgba(226, 232, 240, 0.16);
   --overlay: rgba(2, 6, 23, 0.5);
   --input-bg: #0f172a;
+  --input-border: #42546d;
+  --input-focus-ring: rgba(125, 211, 252, 0.2);
   --secondary-button-bg: #243145;
+  --secondary-button-border: #40506b;
   --primary-button-bg: #7dd3fc;
   --primary-button-text: #0b1526;
   --type-chip-bg: #eff6ff;
@@ -107,6 +120,8 @@
   --card-bg: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
   --callout-bg: linear-gradient(180deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.03));
   --callout-border: rgba(56, 189, 248, 0.18);
+  --table-header-bg: rgba(226, 232, 240, 0.06);
+  --table-row-hover: rgba(125, 211, 252, 0.08);
   --hero-bg: linear-gradient(135deg, rgba(24, 34, 51, 0.98), rgba(15, 23, 42, 0.96));
   --hero-glow: rgba(125, 211, 252, 0.1);
   --folder-highlight: rgba(255, 255, 255, 0.16);
@@ -761,9 +776,18 @@ textarea {
   width: 100%;
   padding: 12px 14px;
   border-radius: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   background: var(--input-bg);
   color: var(--text);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
 }
 
 textarea {
@@ -849,9 +873,21 @@ textarea {
   height: 52px;
   padding: 0;
   border-radius: 18px;
-  font-size: 1.9rem;
-  line-height: 1;
-  font-weight: 500;
+}
+
+.icon-add-button svg,
+.icon-action-button svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.icon-action-button {
+  gap: 8px;
 }
 
 .field-search {
@@ -1016,6 +1052,7 @@ button,
   cursor: pointer;
   font-weight: 700;
   transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+  box-shadow: 0 8px 20px rgba(31, 41, 51, 0.12);
 }
 
 button:hover,
@@ -1035,6 +1072,8 @@ button.secondary,
 .button.secondary {
   background: var(--secondary-button-bg);
   color: var(--text);
+  border: 1px solid var(--secondary-button-border);
+  box-shadow: none;
 }
 
 button.danger {
@@ -1226,6 +1265,8 @@ td {
 
 th {
   white-space: nowrap;
+  background: var(--table-header-bg);
+  position: relative;
 }
 
 .sort-link {
@@ -1241,7 +1282,7 @@ th {
 }
 
 tbody tr:hover {
-  background: var(--folder-glow);
+  background: var(--table-row-hover);
 }
 
 .clickable-row {

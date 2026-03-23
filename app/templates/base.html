@@ -495,7 +495,12 @@
                   ${["string", "number", "boolean", "null", "timestamp", "reference", "map", "array", "bytes", "geopoint"].map((item) => `<option value="${item}" ${item === fieldType ? "selected" : ""}>${item}</option>`).join("")}
                 </select>
               </label>
-              <button type="button" class="button secondary js-delete-field">移除</button>
+              <button type="button" class="button secondary icon-action-button js-delete-field">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 7h14M9 7V5h6v2M9 10v7M15 10v7M7 7l1 12h8l1-12" />
+                </svg>
+                <span>移除</span>
+              </button>
             </div>
             <div class="field-row-body js-field-value-host"></div>
           </div>
