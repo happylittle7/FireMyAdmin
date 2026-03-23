@@ -1,4 +1,4 @@
-# Firestore Browser
+# FireMyAdmin
 
 A local single-user Firestore browser/editor built with Python and FastAPI.
 

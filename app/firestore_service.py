@@ -25,7 +25,7 @@ class ConnectionConfig:
 
 
 def _app_name(config: ConnectionConfig) -> str:
-    return f"firestore-browser::{config.credentials_path}::{config.project_id}"
+    return f"firemyadmin::{config.credentials_path}::{config.project_id}"
 
 
 def get_client(config: ConnectionConfig) -> Client:

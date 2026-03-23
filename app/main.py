@@ -32,7 +32,7 @@ LOCAL_DATA_DIR = BASE_DIR.parent / ".local_data"
 LOCAL_DATA_DIR.mkdir(exist_ok=True)
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-app = FastAPI(title="Firestore Browser")
+app = FastAPI(title="FireMyAdmin")
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 runtime_connection: Dict[str, str] = {
