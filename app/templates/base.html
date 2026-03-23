@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title if title else "Firestore Browser" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}" />
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body>
+    {% macro render_tree(nodes) %}
+      {% for node in nodes %}
+      <div class="tree-node">
+        {% if node.children %}
+        <details class="tree-details" {% if node.expanded or node.active %}open{% endif %}>
+          <summary class="tree-summary">
+            <a href="{{ node.href }}" data-nav="true" class="tree-link {{ node.kind }} {% if node.active %}active{% endif %}" title="{{ node.title if node.title else node.label }}">
+              <span class="tree-label">{{ node.label }}</span>
+              {% if node.meta %}
+              <small>{{ node.meta }}</small>
+              {% endif %}
+            </a>
+          </summary>
+          <div class="tree-children">
+            {{ render_tree(node.children) }}
+          </div>
+        </details>
+        {% else %}
+        <a href="{{ node.href }}" data-nav="true" class="tree-link {{ node.kind }} {% if node.active %}active{% endif %}" title="{{ node.title if node.title else node.label }}">
+          <span class="tree-label">{{ node.label }}</span>
+          {% if node.meta %}
+          <small>{{ node.meta }}</small>
+          {% endif %}
+        </a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% endmacro %}
+    <header class="topbar">
+      <div>
+        <a href="/" data-nav="true" class="topbar-home-link">
+          <h1>Firestore Browser</h1>
+          <p class="muted">本機單人使用的 Firestore 管理工具</p>
+        </a>
+      </div>
+      <div class="topbar-actions">
+        <a href="/" data-nav="true" class="topbar-icon-button" aria-label="回到根目錄" title="回到根目錄">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 10.5 12 3l9 7.5" />
+            <path d="M6.5 9.5V21h11V9.5" />
+            <path d="M10 21v-6h4v6" />
+          </svg>
+        </a>
+        <details class="header-theme-menu">
+          <summary class="topbar-icon-button" aria-label="切換主題" title="切換主題">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v2.5M12 18.5V21M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M3 12h2.5M18.5 12H21M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" />
+              <circle cx="12" cy="12" r="4.25" />
+            </svg>
+          </summary>
+          <div class="header-theme-popover panel">
+            <h2>主題設定</h2>
+            <div class="theme-settings-grid">
+              <label>
+                <span>網站主題</span>
+                <select class="js-app-theme-select">
+                  <option value="light">Light</option>
+                  <option value="warm-dark">Warm Dark</option>
+                  <option value="slate-dark">Slate Dark</option>
+                </select>
+              </label>
+              <label>
+                <span>編輯器主題</span>
+                <select class="js-editor-theme-select">
+                  <option value="vs">vs</option>
+                  <option value="vs-dark">vs-dark</option>
+                  <option value="hc-black">hc-black</option>
+                  <option value="hc-light">hc-light</option>
+                </select>
+              </label>
+            </div>
+            <p class="muted small">
+              網站外觀和 JSON 編輯器主題可分開設定，切頁後也會保留。
+            </p>
+          </div>
+        </details>
+        {% if connection.credentials_path %}
+        <div class="connection-pill">
+          <span class="badge {% if settings.read_only %}warn{% else %}ok{% endif %}">
+            {% if settings.read_only %}Read Only{% else %}Connected{% endif %}
+          </span>
+          <div class="connection-pill-text">
+            <strong>{{ connection.project_id if connection.project_id else "Firestore" }}</strong>
+            <span class="muted small mono">{{ connection.credentials_path.split('/')[-1] }}</span>
+          </div>
+        </div>
+        <details class="header-connection-menu">
+          <summary class="button secondary">Connection</summary>
+          <div class="header-connection-popover panel">
+            <h2>Connection</h2>
+            <form action="/connect" method="post" enctype="multipart/form-data" class="grid-form">
+              <label>
+                <span>Service Account JSON 檔案</span>
+                <input
+                  type="file"
+                  name="credentials_file"
+                  accept=".json,application/json"
+                />
+              </label>
+              <label>
+                <span>Project ID（可選）</span>
+                <input
+                  type="text"
+                  name="project_id"
+                  value="{{ connection.project_id }}"
+                  placeholder="my-firebase-project"
+                />
+              </label>
+              <button type="submit">Update Connection</button>
+            </form>
+            <form action="/logout" method="post" class="logout-form">
+              <button type="submit" class="button secondary danger-outline">登出 / 解除連線</button>
+            </form>
+            <p class="muted small">
+              憑證會存放在專案內的 <span class="mono">.local_data/</span>，方便本機工具重用，不會加入版本控制。
+            </p>
+          </div>
+        </details>
+        {% else %}
+        <span class="badge warn">Not Connected</span>
+        {% endif %}
+      </div>
+    </header>
+
+    {% if not connection.credentials_path %}
+    <section class="panel page-panel">
+      <h2>Connection</h2>
+      <form action="/connect" method="post" enctype="multipart/form-data" class="grid-form">
+        <label>
+          <span>Service Account JSON 檔案</span>
+          <input
+            type="file"
+            name="credentials_file"
+            accept=".json,application/json"
+          />
+        </label>
+        <label>
+          <span>Project ID（可選）</span>
+          <input
+            type="text"
+            name="project_id"
+            value="{{ connection.project_id }}"
+            placeholder="my-firebase-project"
+          />
+        </label>
+        <button type="submit">Connect</button>
+      </form>
+      <p class="muted small">
+        憑證會存放在專案內的 <span class="mono">.local_data/</span>，方便本機工具重用，不會加入版本控制。
+      </p>
+    </section>
+    {% endif %}
+
+    {% if error %}
+    <section class="flash error app-flash">{{ error }}</section>
+    {% endif %}
+    {% if message %}
+    <section class="flash success app-flash">{{ message }}</section>
+    {% endif %}
+
+    <button type="button" class="sidebar-hamburger js-sidebar-toggle" aria-expanded="false" aria-label="Toggle navigation drawer">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-menu">
+        <path d="M4 7h16M4 12h16M4 17h16" />
+      </svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="icon-close">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+    <div class="sidebar-overlay js-sidebar-overlay"></div>
+
+    <main class="layout js-layout">
+      <aside class="sidebar panel js-sidebar">
+        <h2>Explorer</h2>
+        {% if collections %}
+        <nav class="collection-list tree-list">
+          {{ render_tree(sidebar_tree) }}
+        </nav>
+        {% else %}
+        <p class="muted">連線後會顯示 root collections。</p>
+        {% endif %}
+
+        {% if recent_views %}
+        <section class="recent-block">
+          <h3>最近瀏覽</h3>
+          <div class="recent-list">
+            {% for item in recent_views %}
+            <a href="{{ item.href }}" data-nav="true" class="recent-link">
+              <span>{{ item.label }}</span>
+              <small>{{ item.kind }}</small>
+            </a>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+      </aside>
+      <section class="content js-content">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
+    <script>
+      const SIDEBAR_COLLAPSED_KEY = "firestore_browser_sidebar_collapsed";
+      const APP_THEME_KEY = "firestore_browser_app_theme";
+      const EDITOR_THEME_KEY = "firestore_browser_editor_theme";
+      const DEFAULT_APP_THEME = "light";
+      const DEFAULT_EDITOR_THEME = "vs";
+      const APP_THEME_OPTIONS = new Set(["light", "warm-dark", "slate-dark"]);
+      const EDITOR_THEME_OPTIONS = new Set(["vs", "vs-dark", "hc-black", "hc-light"]);
+      const MONACO_VS_PATH = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs";
+      let monacoLoaderPromise = null;
+
+      const getStoredAppTheme = () => {
+        const value = localStorage.getItem(APP_THEME_KEY) || DEFAULT_APP_THEME;
+        return APP_THEME_OPTIONS.has(value) ? value : DEFAULT_APP_THEME;
+      };
+
+      const getStoredEditorTheme = () => {
+        const value = localStorage.getItem(EDITOR_THEME_KEY) || DEFAULT_EDITOR_THEME;
+        return EDITOR_THEME_OPTIONS.has(value) ? value : DEFAULT_EDITOR_THEME;
+      };
+
+      const applyAppTheme = (theme) => {
+        const nextTheme = APP_THEME_OPTIONS.has(theme) ? theme : DEFAULT_APP_THEME;
+        document.documentElement.dataset.theme = nextTheme;
+        localStorage.setItem(APP_THEME_KEY, nextTheme);
+        document.querySelectorAll(".js-app-theme-select").forEach((select) => {
+          select.value = nextTheme;
+        });
+      };
+
+      const applyEditorTheme = (theme) => {
+        const nextTheme = EDITOR_THEME_OPTIONS.has(theme) ? theme : DEFAULT_EDITOR_THEME;
+        localStorage.setItem(EDITOR_THEME_KEY, nextTheme);
+        document.querySelectorAll(".js-editor-theme-select").forEach((select) => {
+          select.value = nextTheme;
+        });
+        if (window.monaco?.editor) {
+          window.monaco.editor.setTheme(nextTheme);
+        }
+      };
+
+      const bindThemeControls = (root = document) => {
+        root.querySelectorAll(".js-app-theme-select").forEach((select) => {
+          if (select.dataset.boundTheme === "true") return;
+          select.dataset.boundTheme = "true";
+          select.value = getStoredAppTheme();
+          select.addEventListener("change", (event) => applyAppTheme(event.target.value));
+        });
+
+        root.querySelectorAll(".js-editor-theme-select").forEach((select) => {
+          if (select.dataset.boundTheme === "true") return;
+          select.dataset.boundTheme = "true";
+          select.value = getStoredEditorTheme();
+          select.addEventListener("change", (event) => applyEditorTheme(event.target.value));
+        });
+      };
+
+      const bindInteractiveRows = (root = document) => {
+        root.querySelectorAll(".clickable-row").forEach((row) => {
+          if (row.dataset.boundClick === "true") return;
+          row.dataset.boundClick = "true";
+          row.addEventListener("click", (event) => {
+            if (event.target.closest("a, button, input, textarea, select, label")) return;
+            const href = row.dataset.href;
+            if (href) navigateTo(href);
+          });
+        });
+      };
+
+      const swapPage = (html, url) => {
+        const parser = new DOMParser();
+        const nextDoc = parser.parseFromString(html, "text/html");
+        const nextContent = nextDoc.querySelector(".js-content");
+        const nextSidebar = nextDoc.querySelector(".js-sidebar");
+        const currentContent = document.querySelector(".js-content");
+        const currentSidebar = document.querySelector(".js-sidebar");
+        if (nextContent && currentContent) currentContent.replaceWith(nextContent);
+        if (nextSidebar && currentSidebar) currentSidebar.replaceWith(nextSidebar);
+        document.querySelectorAll(".app-flash").forEach((item) => item.remove());
+        nextDoc.querySelectorAll(".app-flash").forEach((flash) => {
+          document.querySelector(".page-panel")?.insertAdjacentHTML("afterend", flash.outerHTML);
+        });
+        document.title = nextDoc.title;
+        history.pushState({}, "", url);
+        bindInteractiveRows(document);
+        bindSidebarToggle();
+        bindThemeControls(document);
+        initJsonEditors(document);
+        initDocumentEditorShells(document);
+      };
+
+      const navigateTo = async (url) => {
+        try {
+          const response = await fetch(url, { headers: { "X-Requested-With": "fetch" } });
+          if (!response.ok) {
+            window.location.href = url;
+            return;
+          }
+          const html = await response.text();
+          swapPage(html, url);
+        } catch (_error) {
+          window.location.href = url;
+        }
+      };
+
+      document.addEventListener("click", (event) => {
+        const link = event.target.closest('a[data-nav="true"]');
+        if (!link) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        navigateTo(link.href);
+      });
+
+      const setSidebarState = (collapsed) => {
+        const layout = document.querySelector(".js-layout");
+        const toggle = document.querySelector(".js-sidebar-toggle");
+        const overlay = document.querySelector(".js-sidebar-overlay");
+        if (!layout || !toggle) return;
+        layout.classList.toggle("sidebar-collapsed", collapsed);
+        toggle.classList.toggle("is-open", !collapsed);
+        overlay?.classList.toggle("is-visible", !collapsed);
+        toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "true" : "false");
+      };
+
+      const bindSidebarToggle = () => {
+        const toggle = document.querySelector(".js-sidebar-toggle");
+        if (!toggle || toggle.dataset.boundToggle === "true") return;
+        toggle.dataset.boundToggle = "true";
+        const overlay = document.querySelector(".js-sidebar-overlay");
+        setSidebarState(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== "false");
+        toggle.addEventListener("click", () => {
+          const layout = document.querySelector(".js-layout");
+          const collapsed = layout?.classList.contains("sidebar-collapsed");
+          setSidebarState(!collapsed);
+        });
+        overlay?.addEventListener("click", () => setSidebarState(true));
+      };
+
+      const loadMonaco = () => {
+        if (window.monaco?.editor) return Promise.resolve(window.monaco);
+        if (monacoLoaderPromise) return monacoLoaderPromise;
+
+        monacoLoaderPromise = new Promise((resolve, reject) => {
+          const finishLoad = () => {
+            if (!window.require) {
+              reject(new Error("Monaco loader is unavailable."));
+              return;
+            }
+
+            window.require.config({ paths: { vs: MONACO_VS_PATH } });
+            window.require(["vs/editor/editor.main"], () => resolve(window.monaco), reject);
+          };
+
+          const existing = document.querySelector('script[data-monaco-loader="true"]');
+          if (existing) {
+            if (window.require) finishLoad();
+            else existing.addEventListener("load", finishLoad, { once: true });
+            return;
+          }
+
+          const script = document.createElement("script");
+          script.src = `${MONACO_VS_PATH}/loader.js`;
+          script.dataset.monacoLoader = "true";
+          script.addEventListener("load", finishLoad, { once: true });
+          script.addEventListener("error", () => reject(new Error("Failed to load Monaco.")), { once: true });
+          document.body.appendChild(script);
+        });
+
+        return monacoLoaderPromise;
+      };
+
+      const initJsonEditors = async (root = document) => {
+        const mounts = Array.from(root.querySelectorAll(".js-json-editor[data-textarea-id]"));
+        if (!mounts.length) return;
+
+        try {
+          await loadMonaco();
+        } catch (_error) {
+          return;
+        }
+
+        mounts.forEach((mount) => {
+          if (mount.dataset.editorReady === "true") return;
+          const textarea = document.getElementById(mount.dataset.textareaId);
+          if (!textarea) return;
+
+          mount.dataset.editorReady = "true";
+          mount.classList.add("is-ready");
+          textarea.classList.add("is-hidden");
+          const height = mount.dataset.editorHeight || "520";
+          mount.style.height = `${height}px`;
+
+          const editor = window.monaco.editor.create(mount, {
+            value: textarea.value,
+            language: "json",
+            theme: getStoredEditorTheme(),
+            automaticLayout: true,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            lineNumbers: "on",
+            wordWrap: "on",
+            tabSize: 2,
+            formatOnPaste: true,
+            formatOnType: true,
+            bracketPairColorization: { enabled: true },
+            folding: true,
+            glyphMargin: false,
+            roundedSelection: true,
+            overviewRulerBorder: false,
+            renderLineHighlight: "line"
+          });
+
+          editor.onDidChangeModelContent(() => {
+            textarea.value = editor.getValue();
+          });
+
+          const form = textarea.closest("form");
+          if (form && form.dataset.editorBound !== "true") {
+            form.dataset.editorBound = "true";
+            form.addEventListener("submit", () => {
+              form.querySelectorAll(".js-json-editor[data-textarea-id]").forEach((editorMount) => {
+                const source = document.getElementById(editorMount.dataset.textareaId);
+                const instance = editorMount._editorInstance;
+                if (source && instance) source.value = instance.getValue();
+              });
+            });
+          }
+
+          mount._editorInstance = editor;
+        });
+      };
+
+      const inferFieldType = (value) => {
+        if (value && typeof value === "object" && !Array.isArray(value) && value.__type__) {
+          return value.__type__;
+        }
+        if (Array.isArray(value)) return "array";
+        if (value === null) return "null";
+        if (typeof value === "boolean") return "boolean";
+        if (typeof value === "number") return "number";
+        if (value && typeof value === "object") return "map";
+        return "string";
+      };
+
+      const escapeHtml = (value) =>
+        String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+
+      const fieldTypeIcons = {
+        string: "Aa",
+        number: "123",
+        boolean: "TF",
+        null: "0",
+        timestamp: "T",
+        reference: "->",
+        map: "{}",
+        array: "[]",
+        bytes: "64",
+        geopoint: "@"
+      };
+
+      const createFieldRowMarkup = (entry = {}) => {
+        const fieldType = inferFieldType(entry.value);
+        const key = entry.key || "";
+        return `
+          <div class="field-row" data-field-type="${escapeHtml(fieldType)}">
+            <div class="field-row-meta">
+              <span class="field-row-index js-field-row-index">欄位</span>
+              <span class="chip field-type-chip js-field-type-chip">
+                <span class="field-type-icon js-field-type-icon">${escapeHtml(fieldTypeIcons[fieldType] || "?")}</span>
+                <span class="js-field-type-text">${escapeHtml(fieldType)}</span>
+              </span>
+            </div>
+            <div class="field-row-head">
+              <label>
+                <span>欄位名稱</span>
+                <input type="text" class="js-field-key" value="${escapeHtml(key)}" placeholder="fieldName" />
+              </label>
+              <label>
+                <span>型別</span>
+                <select class="js-field-type">
+                  ${["string", "number", "boolean", "null", "timestamp", "reference", "map", "array", "bytes", "geopoint"].map((item) => `<option value="${item}" ${item === fieldType ? "selected" : ""}>${item}</option>`).join("")}
+                </select>
+              </label>
+              <button type="button" class="button secondary js-delete-field">移除</button>
+            </div>
+            <div class="field-row-body js-field-value-host"></div>
+          </div>
+        `;
+      };
+
+      const updateFieldEditorSummary = (shell) => {
+        if (!shell) return;
+        const rows = Array.from(shell.querySelectorAll(".field-row"));
+        const countChip = shell.querySelector(".js-field-count");
+        const emptyState = shell.querySelector(".js-field-editor-empty");
+        const query = shell.querySelector(".js-field-search")?.value.trim().toLowerCase() || "";
+        let visibleCount = 0;
+        if (countChip) {
+          countChip.textContent = `${rows.length} fields`;
+        }
+        if (emptyState) {
+          emptyState.hidden = rows.length !== 0;
+        }
+        rows.forEach((row, index) => {
+          const indexLabel = row.querySelector(".js-field-row-index");
+          const key = row.querySelector(".js-field-key")?.value.trim();
+          const type = row.querySelector(".js-field-type")?.value || row.dataset.fieldType || "string";
+          const typeChip = row.querySelector(".js-field-type-chip");
+          const typeText = row.querySelector(".js-field-type-text");
+          const typeIcon = row.querySelector(".js-field-type-icon");
+          row.dataset.fieldType = type;
+          if (indexLabel) {
+            indexLabel.textContent = key ? `${index + 1}. ${key}` : `${index + 1}. 未命名欄位`;
+          }
+          if (typeChip) {
+            typeChip.dataset.type = type;
+          }
+          if (typeText) {
+            typeText.textContent = type;
+          }
+          if (typeIcon) {
+            typeIcon.textContent = fieldTypeIcons[type] || "?";
+          }
+          const haystack = `${key || ""} ${type}`.toLowerCase();
+          const matches = !query || haystack.includes(query);
+          row.hidden = !matches;
+          if (matches) visibleCount += 1;
+        });
+        if (countChip && query) {
+          countChip.textContent = `${visibleCount} / ${rows.length} fields`;
+        }
+      };
+
+      const renderFieldValueControls = (row, value) => {
+        const type = row.querySelector(".js-field-type")?.value || "string";
+        const host = row.querySelector(".js-field-value-host");
+        if (!host) return;
+        row.dataset.fieldType = type;
+        updateFieldEditorSummary(row.closest(".js-document-editor-shell"));
+
+        if (type === "string") {
+          host.innerHTML = `<label><span>值</span><input type="text" class="js-field-value" value="${escapeHtml(value ?? "")}" /></label>`;
+          return;
+        }
+
+        if (type === "number") {
+          host.innerHTML = `<label><span>值</span><input type="text" class="js-field-value" value="${escapeHtml(value ?? "")}" placeholder="123 or 3.14" /></label>`;
+          return;
+        }
+
+        if (type === "boolean") {
+          const normalized = value === false ? "false" : "true";
+          host.innerHTML = `
+            <label>
+              <span>值</span>
+              <select class="js-field-value">
+                <option value="true" ${normalized === "true" ? "selected" : ""}>true</option>
+                <option value="false" ${normalized === "false" ? "selected" : ""}>false</option>
+              </select>
+            </label>
+          `;
+          return;
+        }
+
+        if (type === "null") {
+          host.innerHTML = `<div class="field-static-note muted small">這個欄位會儲存為 null。</div>`;
+          return;
+        }
+
+        if (type === "timestamp") {
+          const raw = value && typeof value === "object" ? value.value || "" : value || "";
+          host.innerHTML = `<label><span>Timestamp</span><input type="text" class="js-field-value" value="${escapeHtml(raw)}" placeholder="2026-03-24T12:34:56Z" /></label>`;
+          return;
+        }
+
+        if (type === "reference") {
+          const raw = value && typeof value === "object" ? value.path || "" : value || "";
+          host.innerHTML = `<label><span>Reference Path</span><input type="text" class="js-field-value" value="${escapeHtml(raw)}" placeholder="users/demo/profile/main" /></label>`;
+          return;
+        }
+
+        if (type === "bytes") {
+          const raw = value && typeof value === "object" ? value.base64 || "" : value || "";
+          host.innerHTML = `<label><span>Base64</span><textarea class="js-field-value" rows="3" placeholder="SGVsbG8=">${escapeHtml(raw)}</textarea></label>`;
+          return;
+        }
+
+        if (type === "geopoint") {
+          const latitude = value && typeof value === "object" ? value.latitude ?? "" : "";
+          const longitude = value && typeof value === "object" ? value.longitude ?? "" : "";
+          host.innerHTML = `
+            <div class="field-inline-grid">
+              <label><span>Latitude</span><input type="text" class="js-field-latitude" value="${escapeHtml(latitude)}" placeholder="25.033" /></label>
+              <label><span>Longitude</span><input type="text" class="js-field-longitude" value="${escapeHtml(longitude)}" placeholder="121.5654" /></label>
+            </div>
+          `;
+          return;
+        }
+
+        const serialized = value === undefined
+          ? (type === "array" ? "[]" : "{}")
+          : JSON.stringify(value, null, 2);
+        host.innerHTML = `
+          <label>
+            <span>${type === "array" ? "Array JSON" : "Object JSON"}</span>
+            <textarea class="js-field-value" rows="5">${escapeHtml(serialized)}</textarea>
+          </label>
+        `;
+      };
+
+      const readEditorValue = (textarea) => {
+        const mount = document.querySelector(`.js-json-editor[data-textarea-id="${textarea.id}"]`);
+        return mount?._editorInstance ? mount._editorInstance.getValue() : textarea.value;
+      };
+
+      const writeEditorValue = (textarea, value) => {
+        textarea.value = value;
+        const mount = document.querySelector(`.js-json-editor[data-textarea-id="${textarea.id}"]`);
+        if (mount?._editorInstance) {
+          mount._editorInstance.setValue(value);
+        }
+      };
+
+      const renderFieldRows = (shell, payload) => {
+        const list = shell.querySelector(".js-field-editor-list");
+        if (!list) return;
+        list.innerHTML = "";
+        Object.entries(payload).forEach(([key, value]) => {
+          list.insertAdjacentHTML("beforeend", createFieldRowMarkup({ key, value }));
+          renderFieldValueControls(list.lastElementChild, value);
+        });
+        if (!Object.keys(payload).length) {
+          updateFieldEditorSummary(shell);
+          return;
+        }
+        updateFieldEditorSummary(shell);
+      };
+
+      const showFieldEditorError = (shell, message = "") => {
+        const error = shell.querySelector(".js-field-editor-error");
+        if (!error) return;
+        error.hidden = !message;
+        error.textContent = message;
+      };
+
+      const parseFieldRowsToPayload = (shell) => {
+        const rows = Array.from(shell.querySelectorAll(".field-row"));
+        const payload = {};
+
+        rows.forEach((row, index) => {
+          const key = row.querySelector(".js-field-key")?.value.trim() || "";
+          const type = row.querySelector(".js-field-type")?.value || "string";
+          if (!key) {
+            throw new Error(`第 ${index + 1} 個欄位缺少名稱。`);
+          }
+          if (Object.prototype.hasOwnProperty.call(payload, key)) {
+            throw new Error(`欄位名稱重複: ${key}`);
+          }
+
+          if (type === "string") {
+            payload[key] = row.querySelector(".js-field-value")?.value ?? "";
+            return;
+          }
+          if (type === "number") {
+            const raw = row.querySelector(".js-field-value")?.value ?? "";
+            const parsed = Number(raw);
+            if (Number.isNaN(parsed)) throw new Error(`欄位 ${key} 的 number 格式不正確。`);
+            payload[key] = parsed;
+            return;
+          }
+          if (type === "boolean") {
+            payload[key] = row.querySelector(".js-field-value")?.value === "true";
+            return;
+          }
+          if (type === "null") {
+            payload[key] = null;
+            return;
+          }
+          if (type === "timestamp") {
+            payload[key] = { __type__: "timestamp", value: row.querySelector(".js-field-value")?.value ?? "" };
+            return;
+          }
+          if (type === "reference") {
+            payload[key] = { __type__: "reference", path: row.querySelector(".js-field-value")?.value ?? "" };
+            return;
+          }
+          if (type === "bytes") {
+            payload[key] = { __type__: "bytes", base64: row.querySelector(".js-field-value")?.value ?? "" };
+            return;
+          }
+          if (type === "geopoint") {
+            const latitude = Number(row.querySelector(".js-field-latitude")?.value ?? "");
+            const longitude = Number(row.querySelector(".js-field-longitude")?.value ?? "");
+            if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+              throw new Error(`欄位 ${key} 的 geopoint 格式不正確。`);
+            }
+            payload[key] = { __type__: "geopoint", latitude, longitude };
+            return;
+          }
+
+          const rawJson = row.querySelector(".js-field-value")?.value ?? "";
+          const parsed = JSON.parse(rawJson || (type === "array" ? "[]" : "{}"));
+          if (type === "array" && !Array.isArray(parsed)) {
+            throw new Error(`欄位 ${key} 必須是 array JSON。`);
+          }
+          if (type === "map" && (parsed === null || Array.isArray(parsed) || typeof parsed !== "object")) {
+            throw new Error(`欄位 ${key} 必須是 object JSON。`);
+          }
+          payload[key] = parsed;
+        });
+
+        return payload;
+      };
+
+      const switchDocumentEditorMode = (shell, mode) => {
+        const textareaId = shell.dataset.textareaId;
+        const textarea = textareaId ? document.getElementById(textareaId) : null;
+        if (!textarea) return;
+
+        const fieldEditor = shell.querySelector(".js-field-editor");
+        const rawPanel = shell.querySelector(".raw-editor-panel");
+        const toggles = shell.querySelectorAll(".js-editor-mode-toggle");
+
+        if (mode === "fields") {
+          try {
+            const parsed = JSON.parse(readEditorValue(textarea) || "{}");
+            if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+              throw new Error("Document JSON 最上層必須是 object。");
+            }
+            renderFieldRows(shell, parsed);
+            showFieldEditorError(shell, "");
+          } catch (error) {
+            showFieldEditorError(shell, error.message || "無法切換到欄位模式。");
+            return;
+          }
+        } else {
+          try {
+            const payload = parseFieldRowsToPayload(shell);
+            writeEditorValue(textarea, JSON.stringify(payload, null, 2));
+            showFieldEditorError(shell, "");
+          } catch (error) {
+            showFieldEditorError(shell, error.message || "無法切換到 JSON 模式。");
+            return;
+          }
+        }
+
+        shell.dataset.mode = mode;
+        fieldEditor.hidden = mode !== "fields";
+        rawPanel.hidden = mode !== "raw";
+        toggles.forEach((button) => {
+          button.classList.toggle("active", button.dataset.mode === mode);
+        });
+      };
+
+      const initDocumentEditorShells = (root = document) => {
+        root.querySelectorAll(".js-document-editor-shell").forEach((shell) => {
+          if (shell.dataset.boundEditorShell === "true") return;
+          shell.dataset.boundEditorShell = "true";
+
+          const list = shell.querySelector(".js-field-editor-list");
+          const addButton = shell.querySelector(".js-add-field");
+          const form = shell.closest("form");
+
+          addButton?.addEventListener("click", () => {
+            list?.insertAdjacentHTML("beforeend", createFieldRowMarkup({ key: "", value: "" }));
+            const row = list?.lastElementChild;
+            if (row) {
+              renderFieldValueControls(row, "");
+              row.querySelector(".js-field-key")?.focus();
+            }
+          });
+
+          shell.addEventListener("click", (event) => {
+            const deleteButton = event.target.closest(".js-delete-field");
+            if (deleteButton) {
+              const row = deleteButton.closest(".field-row");
+              row?.remove();
+              updateFieldEditorSummary(shell);
+              if (!list?.children.length) {
+                showFieldEditorError(shell, "");
+              }
+              return;
+            }
+
+            const toggle = event.target.closest(".js-editor-mode-toggle");
+            if (toggle) {
+              switchDocumentEditorMode(shell, toggle.dataset.mode || "fields");
+            }
+          });
+
+          shell.addEventListener("change", (event) => {
+            const select = event.target.closest(".js-field-type");
+            if (!select) return;
+            const row = select.closest(".field-row");
+            renderFieldValueControls(row, select.value === "array" ? [] : select.value === "map" ? {} : "");
+          });
+
+          shell.addEventListener("input", (event) => {
+            if (event.target.closest(".js-field-key") || event.target.closest(".js-field-search")) {
+              updateFieldEditorSummary(shell);
+            }
+          });
+
+          shell.addEventListener("focusin", (event) => {
+            const row = event.target.closest(".field-row");
+            row?.classList.add("is-active");
+          });
+
+          shell.addEventListener("focusout", (event) => {
+            const row = event.target.closest(".field-row");
+            requestAnimationFrame(() => {
+              if (row && !row.contains(document.activeElement)) {
+                row.classList.remove("is-active");
+              }
+            });
+          });
+
+          form?.addEventListener("submit", (event) => {
+            if (shell.dataset.mode === "fields") {
+              try {
+                const textarea = document.getElementById(shell.dataset.textareaId);
+                const payload = parseFieldRowsToPayload(shell);
+                writeEditorValue(textarea, JSON.stringify(payload, null, 2));
+                showFieldEditorError(shell, "");
+              } catch (error) {
+                event.preventDefault();
+                showFieldEditorError(shell, error.message || "欄位資料格式有誤。");
+              }
+            }
+          });
+
+          switchDocumentEditorMode(shell, "fields");
+          updateFieldEditorSummary(shell);
+        });
+      };
+
+      applyAppTheme(getStoredAppTheme());
+      applyEditorTheme(getStoredEditorTheme());
+      window.addEventListener("popstate", () => navigateTo(window.location.href));
+      bindInteractiveRows(document);
+      bindSidebarToggle();
+      bindThemeControls(document);
+      initJsonEditors(document);
+      initDocumentEditorShells(document);
+    </script>
+    {% block extra_scripts %}{% endblock %}
+  </body>
+</html>

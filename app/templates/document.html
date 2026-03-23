@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  {% if breadcrumbs %}
+  <nav class="breadcrumbs">
+    {% for crumb in breadcrumbs %}
+    <a href="{{ crumb.href }}" data-nav="true">{{ crumb.label }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+  <div class="section-header">
+    <div>
+      <h2>{{ document_meta.id if document_meta.id else current_document_path }}</h2>
+      <p class="muted mono">{{ document_meta.path if document_meta.path else current_document_path }}</p>
+    </div>
+    <div class="header-actions">
+      {% if parent_link and parent_link.href != '/' %}
+      <a data-nav="true" class="button secondary" href="{{ parent_link.href }}">{{ parent_link.label }}</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if document_meta %}
+  <div class="meta-grid">
+    <div><strong>Created</strong><span>{{ document_meta.create_time }}</span></div>
+    <div><strong>Updated</strong><span>{{ document_meta.update_time }}</span></div>
+  </div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h3>下一層資料夾</h3>
+  {% if subcollections %}
+  <div class="explorer-grid">
+    {% for collection in subcollections %}
+    <a data-nav="true" class="explorer-card collection-card" href="/collections/{{ current_document_path }}/{{ collection }}">
+      <div class="explorer-icon folder"></div>
+      <div class="explorer-body">
+        <strong>{{ collection }}</strong>
+        <span class="muted small">打開這個 subcollection</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">這個 document 目前沒有 subcollections。</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <details open>
+    <summary>編輯 document JSON</summary>
+    <h3>Edit document JSON</h3>
+    <form method="post" action="/documents/{{ current_document_path }}/save" class="stack-form">
+      <div class="document-editor-shell js-document-editor-shell" data-textarea-id="document-json-editor">
+        <div class="editor-mode-bar">
+          <div class="view-switch" aria-label="Editor mode">
+            <button type="button" class="view-chip active js-editor-mode-toggle" data-mode="fields">欄位模式</button>
+            <button type="button" class="view-chip js-editor-mode-toggle" data-mode="raw">JSON 模式</button>
+          </div>
+          <p class="muted small">欄位模式適合快速調整欄位；JSON 模式保留完整原始內容。</p>
+        </div>
+
+        <div class="field-editor js-field-editor">
+          <div class="field-editor-toolbar">
+            <div class="field-editor-toolbar-main">
+              <button type="button" class="icon-add-button js-add-field" aria-label="新增欄位" title="新增欄位">+</button>
+              <span class="chip field-count-chip js-field-count">0 fields</span>
+            </div>
+            <label class="field-search">
+              <span>搜尋欄位</span>
+              <input type="text" class="js-field-search" placeholder="輸入欄位名稱或型別" />
+            </label>
+            <span class="muted small">支援 string、number、boolean、null、timestamp、reference、map、array、bytes、geopoint。</span>
+          </div>
+          <div class="field-editor-empty js-field-editor-empty" hidden>
+            <strong>目前沒有欄位</strong>
+            <p class="muted small">可以先新增一個欄位，或切到 JSON 模式貼上完整資料。</p>
+          </div>
+          <div class="field-editor-list js-field-editor-list"></div>
+          <p class="flash error field-editor-error js-field-editor-error" hidden></p>
+        </div>
+
+        <label class="raw-editor-panel">
+          <span>JSON</span>
+          <div class="json-editor-block">
+            <div
+              class="json-editor js-json-editor"
+              data-textarea-id="document-json-editor"
+              data-editor-height="520"
+              aria-label="Document JSON editor"
+            ></div>
+            <textarea id="document-json-editor" name="document_json" rows="22" class="json-editor-textarea">{{ document_json }}</textarea>
+          </div>
+        </label>
+      </div>
+      <button type="submit" {% if settings.read_only %}disabled{% endif %}>Save</button>
+    </form>
+  </details>
+</section>
+
+<section class="panel danger">
+  <details>
+    <summary>刪除 document</summary>
+    <h3>Delete document</h3>
+    <form method="post" action="/documents/{{ current_document_path }}/delete" class="stack-form">
+      <label>
+        <span>輸入 DELETE 才會執行刪除</span>
+        <input type="text" name="confirm_text" placeholder="DELETE" />
+      </label>
+      <button type="submit" class="danger" {% if settings.read_only %}disabled{% endif %}>Delete</button>
+    </form>
+  </details>
+</section>
+{% endblock %}

@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  {% if breadcrumbs %}
+  <nav class="breadcrumbs">
+    {% for crumb in breadcrumbs %}
+    <a href="{{ crumb.href }}" data-nav="true">{{ crumb.label }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+  <div class="section-header">
+    <div>
+      <h2>{{ current_collection }}</h2>
+      <p class="muted">
+        {% if view_mode == 'table' %}
+        目前使用列表模式檢視這個 collection 裡的 documents。
+        {% else %}
+        像點資料夾一樣瀏覽這個 collection 裡的 documents。
+        {% endif %}
+      </p>
+    </div>
+    <div class="header-actions">
+      <div class="view-switch" aria-label="Display mode">
+        <a data-nav="true" class="view-chip {% if view_mode != 'table' %}active{% endif %}" href="/collections/{{ current_collection }}?page={{ pagination.page }}&view_mode=grid&document_id={{ query.document_id | urlencode }}&where_field={{ query.where_field | urlencode }}&where_op={{ query.where_op | urlencode }}&where_value={{ query.where_value | urlencode }}&order_by={{ query.order_by | urlencode }}&direction={{ query.direction | urlencode }}&limit={{ query.limit }}">卡片</a>
+        <a data-nav="true" class="view-chip {% if view_mode == 'table' %}active{% endif %}" href="/collections/{{ current_collection }}?page={{ pagination.page }}&view_mode=table&document_id={{ query.document_id | urlencode }}&where_field={{ query.where_field | urlencode }}&where_op={{ query.where_op | urlencode }}&where_value={{ query.where_value | urlencode }}&order_by={{ query.order_by | urlencode }}&direction={{ query.direction | urlencode }}&limit={{ query.limit }}">列表</a>
+      </div>
+      {% if parent_link and parent_link.href != '/' %}
+      <a data-nav="true" class="button secondary" href="{{ parent_link.href }}">{{ parent_link.label }}</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if view_mode != 'table' %}
+    {% if documents %}
+    <div class="explorer-grid">
+      {% for doc in documents %}
+      <a data-nav="true" class="explorer-card document-card" href="/documents/{{ doc.path }}">
+        <div class="explorer-icon doc"></div>
+        <div class="explorer-body">
+          <strong>{{ doc.id }}</strong>
+          <span class="muted small mono">{{ doc.preview if doc.preview else "空文件或無預覽欄位" }}</span>
+          <span class="muted small">欄位 {{ doc.field_count }} 個</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">目前沒有可顯示的 documents，或這個 collection 目前是空的。</p>
+    {% endif %}
+  {% else %}
+  <p class="muted">目前使用列表模式，文件會顯示在下方的 Documents List。</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <form method="get" action="/collections/{{ current_collection }}" class="query-panel">
+    <input type="hidden" name="view_mode" value="{{ view_mode if view_mode else 'table' }}" />
+    <input type="hidden" name="page" value="1" />
+
+    <div class="query-panel-head">
+      <div>
+        <h3>查詢與排序</h3>
+        <p class="muted small">常用查詢放在前面，進階排序收在下面。</p>
+      </div>
+      <div class="query-actions">
+        <button type="submit">套用條件</button>
+        <a
+          data-nav="true"
+          class="button secondary"
+          href="/collections/{{ current_collection }}?view_mode={{ view_mode if view_mode else 'table' }}&page=1&limit=20"
+        >
+          清除條件
+        </a>
+      </div>
+    </div>
+
+    <div class="query-quick-grid">
+      <label class="query-primary">
+        <span>快速找 Document ID</span>
+        <input type="text" name="document_id" value="{{ query.document_id }}" placeholder="輸入完整 document ID 直接定位" />
+      </label>
+      <label>
+        <span>Where 欄位</span>
+        <select name="where_field">
+          <option value="">選擇欄位</option>
+          {% for field in query_fields %}
+          <option value="{{ field }}" {% if query.where_field == field %}selected{% endif %}>{{ field }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>Operator</span>
+        <select name="where_op">
+          {% for op in ["==", "!=", ">", ">=", "<", "<=", "array_contains"] %}
+          <option value="{{ op }}" {% if query.where_op == op %}selected{% endif %}>{{ op }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="query-primary">
+        <span>Where 值</span>
+        <input type="text" name="where_value" value="{{ query.where_value }}" placeholder='"hello" / 123 / true' />
+      </label>
+      <label>
+        <span>每頁筆數</span>
+        <input type="number" name="limit" value="{{ query.limit }}" min="1" max="200" />
+      </label>
+      <div class="query-status-note muted small">
+        只保留 Firestore 直接可查詢的方式，避免大資料量時在本地慢慢掃描而卡住。
+      </div>
+    </div>
+
+    <details class="query-advanced">
+      <summary>進階排序選項</summary>
+      <div class="query-advanced-grid">
+        <label>
+          <span>Firestore 排序欄位</span>
+          <input type="text" name="order_by" value="{{ query.order_by }}" placeholder="例如 createdAt、name、__name__" />
+        </label>
+        <label>
+          <span>排序方向</span>
+          <select name="direction">
+            {% for item in ["ASCENDING", "DESCENDING"] %}
+            <option value="{{ item }}" {% if query.direction == item %}selected{% endif %}>{{ item }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <p class="muted small query-hint">
+        `where 欄位` 下拉來自目前頁面看到的文件欄位。列表模式中若欄位標題可點，也可以直接用點欄位方式排序。
+      </p>
+    </details>
+  </form>
+</section>
+
+<section class="panel">
+  <details>
+    <summary>新增 document</summary>
+    <h3>Create document</h3>
+    <form method="post" action="/collections/{{ current_collection }}/create" class="stack-form">
+      <label>
+        <span>Document ID（留空則自動產生）</span>
+        <input type="text" name="document_id" />
+      </label>
+      <label>
+        <span>JSON</span>
+        <div class="json-editor-block compact">
+          <div
+            class="json-editor js-json-editor"
+            data-textarea-id="create-document-json-editor"
+            data-editor-height="260"
+            aria-label="Create document JSON editor"
+          ></div>
+          <textarea id="create-document-json-editor" name="document_json" rows="10" class="json-editor-textarea">{
+  "createdAt": { "__type__": "timestamp", "value": "2026-03-23T10:00:00Z" }
+}</textarea>
+        </div>
+      </label>
+      <button type="submit" {% if settings.read_only %}disabled{% endif %}>Create</button>
+    </form>
+  </details>
+</section>
+
+<section class="panel">
+  <h3>Documents {{ "List" if view_mode == "table" else "Cards" }}</h3>
+  {% if documents and view_mode == "table" %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          {% for column in table_columns %}
+          <th>
+            {% if column.sortable %}
+            <a data-nav="true" class="sort-link {% if column.active %}active{% endif %}" href="/collections/{{ current_collection }}?page=1&view_mode=table&document_id={{ query.document_id | urlencode }}&where_field={{ query.where_field | urlencode }}&where_op={{ query.where_op | urlencode }}&where_value={{ query.where_value | urlencode }}&order_by={{ column.field | urlencode }}&direction={{ column.next_direction | urlencode }}&limit={{ query.limit }}">
+              <span>{{ column.label }}</span>
+              {% if column.active %}
+              <span>{{ "↑" if current_direction == "ASCENDING" else "↓" }}</span>
+              {% else %}
+              <span class="muted">↕</span>
+              {% endif %}
+            </a>
+            {% else %}
+            <span>{{ column.label }}</span>
+            {% endif %}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr class="clickable-row" data-href="/documents/{{ doc.path }}">
+          <td><a data-nav="true" href="/documents/{{ doc.path }}">{{ doc.id }}</a></td>
+          {% for column in table_columns[1:-2] %}
+          <td class="mono small">{{ doc.table_fields.get(column.field, "—") }}</td>
+          {% endfor %}
+          <td>{{ doc.field_count }}</td>
+          <td>{{ doc.update_time }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagination.enabled %}
+  <div class="pagination-bar">
+    <a data-nav="true" class="button secondary {% if not pagination.has_prev %}disabled-link{% endif %}" href="/collections/{{ current_collection }}?page={{ pagination.page - 1 }}&view_mode=table&document_id={{ query.document_id | urlencode }}&where_field={{ query.where_field | urlencode }}&where_op={{ query.where_op | urlencode }}&where_value={{ query.where_value | urlencode }}&order_by={{ query.order_by | urlencode }}&direction={{ query.direction | urlencode }}&limit={{ query.limit }}">上一頁</a>
+    <div class="pagination-pages">
+      {% if pagination.pages and pagination.has_prev and pagination.pages[0] > 1 %}
+      <a data-nav="true" class="page-number" href="/collections/{{ current_collection }}?page=1&view_mode=table&document_id={{ query.document_id | urlencode }}&where_field={{ query.where_field | urlencode }}&where_op={{ query.where_op | urlencode }}&where_value={{ query.where_value | urlencode }}&order_by={{ query.order_by | urlencode }}&direction={{ query.direction | urlencode }}&limit={{ query.limit }}">1</a>
+      {% if pagination.pages[0] > 2 %}
+      <span class="pagination-ellipsis">…</span>
+      {% endif %}
+      {% endif %}
+
+      {% for page_number in pagination.pages %}
+      <a data-nav="true" class="page-number {% if page_number == pagination.page %}active{% endif %}" href="/collections/{{ current_collection }}?page={{ page_number }}&view_mode=table&document_id={{ query.document_id | urlencode }}&where_field={{ query.where_field | urlencode }}&where_op={{ query.where_op | urlencode }}&where_value={{ query.where_value | urlencode }}&order_by={{ query.order_by | urlencode }}&direction={{ query.direction | urlencode }}&limit={{ query.limit }}">{{ page_number }}</a>
+      {% endfor %}
+
+      {% if pagination.has_next %}
+      <span class="pagination-ellipsis">…</span>
+      {% endif %}
+    </div>
+    <a data-nav="true" class="button secondary {% if not pagination.has_next %}disabled-link{% endif %}" href="/collections/{{ current_collection }}?page={{ pagination.page + 1 }}&view_mode=table&document_id={{ query.document_id | urlencode }}&where_field={{ query.where_field | urlencode }}&where_op={{ query.where_op | urlencode }}&where_value={{ query.where_value | urlencode }}&order_by={{ query.order_by | urlencode }}&direction={{ query.direction | urlencode }}&limit={{ query.limit }}">下一頁</a>
+  </div>
+  {% endif %}
+  {% elif not documents %}
+  <p class="muted">沒有查到符合條件的文件。</p>
+  {% else %}
+  <p class="muted">目前是卡片模式，可用上方切換成列表模式。</p>
+  {% endif %}
+</section>
+{% endblock %}

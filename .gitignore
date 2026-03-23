@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.local_data/
+*-firebase-adminsdk-*.json
+firebase-key-*.json
+
+.DS_Store

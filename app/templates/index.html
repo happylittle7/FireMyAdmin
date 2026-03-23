@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel hero">
+  <h2>開始使用</h2>
+  <p>
+    先輸入 Firebase Admin SDK 的 service account JSON 路徑，連線後即可瀏覽 collections、
+    查詢 documents，並直接編輯 Firestore 資料。
+  </p>
+  <div class="callouts">
+    <div class="callout">
+      <h3>查詢</h3>
+      <p>支援簡單 where、排序與 limit。</p>
+    </div>
+    <div class="callout">
+      <h3>編輯</h3>
+      <p>用 JSON 編輯欄位，保留 timestamp、reference 等 Firestore 型別。</p>
+    </div>
+    <div class="callout">
+      <h3>安全</h3>
+      <p>可切換唯讀模式，刪除需手動輸入確認字樣。</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
