@@ -121,7 +121,7 @@ def build_table_columns(
 def build_query_fields(documents: list[Dict[str, Any]], current_field: str = "") -> list[str]:
     frequencies: Dict[str, int] = {}
     for item in documents:
-        for key in item.get("table_fields", {}):
+        for key in item.get("all_fields", item.get("table_fields", {})):
             frequencies[key] = frequencies.get(key, 0) + 1
 
     fields = sorted(frequencies, key=lambda key: (-frequencies[key], key))

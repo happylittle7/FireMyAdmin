@@ -207,6 +207,7 @@ def flatten_snapshots(snapshots: Iterable[DocumentSnapshot]) -> List[Dict[str, A
                 "update_time": snapshot.update_time,
                 "field_count": len(data),
                 "preview": ", ".join(preview_pairs),
+                "all_fields": list(data.keys()),
                 "table_fields": {
                     key: preview_scalar(item) for key, item in data.items() if not isinstance(item, (dict, list))
                 },
@@ -224,4 +225,3 @@ def preview_scalar(value: Any) -> str:
         return value.isoformat()
     text = str(value)
     return text if len(text) <= 40 else f"{text[:37]}..."
-
