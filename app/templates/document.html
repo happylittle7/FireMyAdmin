@@ -55,13 +55,13 @@
       <div class="document-editor-shell js-document-editor-shell" data-textarea-id="document-json-editor">
         <div class="editor-mode-bar">
           <div class="view-switch" aria-label="Editor mode">
-            <button type="button" class="view-chip active js-editor-mode-toggle" data-mode="fields">欄位模式</button>
-            <button type="button" class="view-chip js-editor-mode-toggle" data-mode="raw">JSON 模式</button>
+            <button type="button" class="view-chip js-editor-mode-toggle" data-mode="fields">欄位模式</button>
+            <button type="button" class="view-chip active js-editor-mode-toggle" data-mode="raw">JSON 模式</button>
           </div>
           <p class="muted small">欄位模式適合快速調整欄位；JSON 模式保留完整原始內容。</p>
         </div>
 
-        <div class="field-editor js-field-editor">
+        <div class="field-editor js-field-editor" hidden>
           <div class="field-editor-toolbar">
             <div class="field-editor-toolbar-main">
               <button type="button" class="icon-add-button js-add-field" aria-label="新增欄位" title="新增欄位">

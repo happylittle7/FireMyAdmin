@@ -753,13 +753,15 @@
             return;
           }
         } else {
-          try {
-            const payload = parseFieldRowsToPayload(shell);
-            writeEditorValue(textarea, JSON.stringify(payload, null, 2));
-            showFieldEditorError(shell, "");
-          } catch (error) {
-            showFieldEditorError(shell, error.message || "無法切換到 JSON 模式。");
-            return;
+          if (shell.dataset.mode === "fields") {
+            try {
+              const payload = parseFieldRowsToPayload(shell);
+              writeEditorValue(textarea, JSON.stringify(payload, null, 2));
+              showFieldEditorError(shell, "");
+            } catch (error) {
+              showFieldEditorError(shell, error.message || "無法切換到 JSON 模式。");
+              return;
+            }
           }
         }
 
@@ -848,7 +850,18 @@
             }
           });
 
-          switchDocumentEditorMode(shell, "fields");
+          const textarea = document.getElementById(shell.dataset.textareaId);
+          if (textarea) {
+            try {
+              const parsed = JSON.parse(readEditorValue(textarea) || "{}");
+              if (parsed && !Array.isArray(parsed) && typeof parsed === "object") {
+                renderFieldRows(shell, parsed);
+              }
+            } catch (_error) {
+              // Keep raw mode available even if the current JSON is temporarily invalid.
+            }
+          }
+          switchDocumentEditorMode(shell, "raw");
           updateFieldEditorSummary(shell);
         });
       };
