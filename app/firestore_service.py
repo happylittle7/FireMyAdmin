@@ -211,6 +211,9 @@ def flatten_snapshots(snapshots: Iterable[DocumentSnapshot]) -> List[Dict[str, A
                 "table_fields": {
                     key: preview_scalar(item) for key, item in data.items() if not isinstance(item, (dict, list))
                 },
+                "datetime_fields": {
+                    key for key, item in data.items() if isinstance(item, datetime) and not isinstance(item, (dict, list))
+                },
             }
         )
     return rows

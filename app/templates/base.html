@@ -78,9 +78,27 @@
                   <option value="hc-light">hc-light</option>
                 </select>
               </label>
+              <label>
+                <span>時間顯示時區</span>
+                <select class="js-tz-select">
+                  <option value="local">本機時區</option>
+                  <option value="UTC">UTC</option>
+                  <option value="Asia/Taipei">Asia/Taipei (UTC+8)</option>
+                  <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+                  <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
+                  <option value="Asia/Hong_Kong">Asia/Hong_Kong (UTC+8)</option>
+                  <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
+                  <option value="America/New_York">America/New_York</option>
+                  <option value="America/Chicago">America/Chicago</option>
+                  <option value="America/Los_Angeles">America/Los_Angeles</option>
+                  <option value="Europe/London">Europe/London</option>
+                  <option value="Europe/Paris">Europe/Paris</option>
+                  <option value="Australia/Sydney">Australia/Sydney</option>
+                </select>
+              </label>
             </div>
             <p class="muted small">
-              網站外觀和 JSON 編輯器主題可分開設定，切頁後也會保留。
+              網站外觀和 JSON 編輯器主題可分開設定，切頁後也會保留。時區設定僅影響介面顯示，不會變更實際儲存的資料。
             </p>
           </div>
         </details>
@@ -211,8 +229,10 @@
       const SIDEBAR_COLLAPSED_KEY = "firestore_browser_sidebar_collapsed";
       const APP_THEME_KEY = "firestore_browser_app_theme";
       const EDITOR_THEME_KEY = "firestore_browser_editor_theme";
+      const TZ_KEY = "firestore_browser_display_tz";
       const DEFAULT_APP_THEME = "light";
       const DEFAULT_EDITOR_THEME = "vs";
+      const DEFAULT_TZ = "local";
       const APP_THEME_OPTIONS = new Set(["light", "warm-dark", "slate-dark"]);
       const EDITOR_THEME_OPTIONS = new Set(["vs", "vs-dark", "hc-black", "hc-light"]);
       const MONACO_VS_PATH = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs";
@@ -248,6 +268,37 @@
         }
       };
 
+      const getStoredTz = () => localStorage.getItem(TZ_KEY) || DEFAULT_TZ;
+
+      const formatUtcTime = (isoString, tzName) => {
+        try {
+          const date = new Date(isoString);
+          if (isNaN(date.getTime())) return isoString;
+          const tz = tzName === "local" ? Intl.DateTimeFormat().resolvedOptions().timeZone : tzName;
+          const p = {};
+          new Intl.DateTimeFormat("en", {
+            timeZone: tz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit",
+            hour12: false,
+          }).formatToParts(date).forEach(({ type, value }) => { p[type] = value; });
+          return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+        } catch (_e) {
+          return isoString;
+        }
+      };
+
+      const applyTimezone = (tzName) => {
+        localStorage.setItem(TZ_KEY, tzName);
+        document.querySelectorAll(".js-tz-time").forEach((el) => {
+          const utcTime = el.dataset.utcTime;
+          if (utcTime) el.textContent = formatUtcTime(utcTime, tzName);
+        });
+        document.querySelectorAll(".js-tz-select").forEach((sel) => {
+          sel.value = tzName;
+        });
+      };
+
       const bindThemeControls = (root = document) => {
         root.querySelectorAll(".js-app-theme-select").forEach((select) => {
           if (select.dataset.boundTheme === "true") return;
@@ -261,6 +312,13 @@
           select.dataset.boundTheme = "true";
           select.value = getStoredEditorTheme();
           select.addEventListener("change", (event) => applyEditorTheme(event.target.value));
+        });
+
+        root.querySelectorAll(".js-tz-select").forEach((select) => {
+          if (select.dataset.boundTz === "true") return;
+          select.dataset.boundTz = "true";
+          select.value = getStoredTz();
+          select.addEventListener("change", (event) => applyTimezone(event.target.value));
         });
       };
 
@@ -294,6 +352,7 @@
         bindInteractiveRows(document);
         bindSidebarToggle();
         bindThemeControls(document);
+        applyTimezone(getStoredTz());
         initJsonEditors(document);
         initDocumentEditorShells(document);
       };
@@ -868,6 +927,7 @@
 
       applyAppTheme(getStoredAppTheme());
       applyEditorTheme(getStoredEditorTheme());
+      applyTimezone(getStoredTz());
       window.addEventListener("popstate", () => navigateTo(window.location.href));
       bindInteractiveRows(document);
       bindSidebarToggle();

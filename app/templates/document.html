@@ -22,8 +22,8 @@
 
   {% if document_meta %}
   <div class="meta-grid">
-    <div><strong>Created</strong><span>{{ document_meta.create_time }}</span></div>
-    <div><strong>Updated</strong><span>{{ document_meta.update_time }}</span></div>
+    <div><strong>Created</strong><span>{% if document_meta.create_time %}<time class="js-tz-time" data-utc-time="{{ document_meta.create_time.isoformat() }}">{{ document_meta.create_time }}</time>{% else %}—{% endif %}</span></div>
+    <div><strong>Updated</strong><span>{% if document_meta.update_time %}<time class="js-tz-time" data-utc-time="{{ document_meta.update_time.isoformat() }}">{{ document_meta.update_time }}</time>{% else %}—{% endif %}</span></div>
   </div>
   {% endif %}
 </section>

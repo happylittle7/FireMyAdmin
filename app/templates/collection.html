@@ -190,10 +190,10 @@
         <tr class="clickable-row" data-href="/documents/{{ doc.path }}">
           <td><a data-nav="true" href="/documents/{{ doc.path }}">{{ doc.id }}</a></td>
           {% for column in table_columns[1:-2] %}
-          <td class="mono small">{{ doc.table_fields.get(column.field, "—") }}</td>
+          <td class="mono small">{% if column.field in doc.datetime_fields %}<time class="js-tz-time" data-utc-time="{{ doc.table_fields.get(column.field) }}">{{ doc.table_fields.get(column.field, "—") }}</time>{% else %}{{ doc.table_fields.get(column.field, "—") }}{% endif %}</td>
           {% endfor %}
           <td>{{ doc.field_count }}</td>
-          <td>{{ doc.update_time }}</td>
+          <td>{% if doc.update_time %}<time class="js-tz-time" data-utc-time="{{ doc.update_time.isoformat() }}">{{ doc.update_time }}</time>{% else %}—{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
