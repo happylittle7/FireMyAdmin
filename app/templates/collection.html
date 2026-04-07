@@ -11,13 +11,6 @@
   <div class="section-header">
     <div>
       <h2>{{ current_collection }}</h2>
-      <p class="muted">
-        {% if view_mode == 'table' %}
-        目前使用列表模式檢視這個 collection 裡的 documents。
-        {% else %}
-        像點資料夾一樣瀏覽這個 collection 裡的 documents。
-        {% endif %}
-      </p>
     </div>
     <div class="header-actions">
       <div class="view-switch" aria-label="Display mode">
@@ -47,8 +40,6 @@
     {% else %}
     <p class="muted">目前沒有可顯示的 documents，或這個 collection 目前是空的。</p>
     {% endif %}
-  {% else %}
-  <p class="muted">目前使用列表模式，文件會顯示在下方的 Documents List。</p>
   {% endif %}
 </section>
 
@@ -60,7 +51,6 @@
     <div class="query-panel-head">
       <div>
         <h3>查詢與排序</h3>
-        <p class="muted small">常用查詢放在前面，進階排序收在下面。</p>
       </div>
       <div class="query-actions">
         <button type="submit">套用條件</button>
@@ -161,7 +151,7 @@
 </section>
 
 <section class="panel">
-  <h3>Documents {{ "List" if view_mode == "table" else "Cards" }}</h3>
+  <h3>Documents</h3>
   {% if documents and view_mode == "table" %}
   <div class="table-wrap">
     <table>
@@ -223,8 +213,6 @@
   {% endif %}
   {% elif not documents %}
   <p class="muted">沒有查到符合條件的文件。</p>
-  {% else %}
-  <p class="muted">目前是卡片模式，可用上方切換成列表模式。</p>
   {% endif %}
 </section>
 {% endblock %}
