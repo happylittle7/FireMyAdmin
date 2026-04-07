@@ -8,6 +8,7 @@
     {% block extra_head %}{% endblock %}
   </head>
   <body>
+    <div class="nav-progress js-nav-progress" aria-hidden="true"><div class="nav-progress-bar js-nav-progress-bar"></div></div>
     {% macro render_tree(nodes) %}
       {% for node in nodes %}
       <div class="tree-node">
@@ -237,6 +238,8 @@
       const EDITOR_THEME_OPTIONS = new Set(["vs", "vs-dark", "hc-black", "hc-light"]);
       const MONACO_VS_PATH = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs";
       let monacoLoaderPromise = null;
+      let navProgressTimer = null;
+      let currentNavController = null;
 
       const getStoredAppTheme = () => {
         const value = localStorage.getItem(APP_THEME_KEY) || DEFAULT_APP_THEME;
@@ -299,6 +302,41 @@
         });
       };
 
+      const startNavProgress = () => {
+        clearTimeout(navProgressTimer);
+        const progress = document.querySelector(".js-nav-progress");
+        const bar = progress?.querySelector(".js-nav-progress-bar");
+        if (!progress || !bar) return;
+        // Instant reset (no transition)
+        bar.style.transition = "none";
+        bar.style.width = "0%";
+        bar.offsetWidth; // force reflow
+        // Fade in and start slow crawl (uses CSS-defined 8s transition)
+        bar.style.transition = "";
+        progress.classList.add("is-active");
+        bar.style.width = "72%";
+      };
+
+      const completeNavProgress = () => {
+        clearTimeout(navProgressTimer);
+        const progress = document.querySelector(".js-nav-progress");
+        const bar = progress?.querySelector(".js-nav-progress-bar");
+        if (!progress || !bar) return;
+        // Sprint to 100%
+        bar.style.transition = "width 0.2s ease";
+        bar.style.width = "100%";
+        // Fade out after the sprint, then fully reset
+        navProgressTimer = setTimeout(() => {
+          progress.classList.remove("is-active");
+          navProgressTimer = setTimeout(() => {
+            bar.style.transition = "none";
+            bar.style.width = "0%";
+            bar.offsetWidth;
+            bar.style.transition = "";
+          }, 200);
+        }, 250);
+      };
+
       const bindThemeControls = (root = document) => {
         root.querySelectorAll(".js-app-theme-select").forEach((select) => {
           if (select.dataset.boundTheme === "true") return;
@@ -349,6 +387,7 @@
         });
         document.title = nextDoc.title;
         history.pushState({}, "", url);
+        completeNavProgress();
         bindInteractiveRows(document);
         bindSidebarToggle();
         bindThemeControls(document);
@@ -358,15 +397,27 @@
       };
 
       const navigateTo = async (url) => {
+        // Cancel any in-flight navigation
+        if (currentNavController) currentNavController.abort();
+        currentNavController = new AbortController();
+        const { signal } = currentNavController;
+
+        startNavProgress();
+        document.querySelector(".js-content")?.classList.add("is-navigating");
+
         try {
-          const response = await fetch(url, { headers: { "X-Requested-With": "fetch" } });
+          const response = await fetch(url, {
+            headers: { "X-Requested-With": "fetch" },
+            signal,
+          });
           if (!response.ok) {
             window.location.href = url;
             return;
           }
           const html = await response.text();
           swapPage(html, url);
-        } catch (_error) {
+        } catch (error) {
+          if (error.name === "AbortError") return; // superseded by newer navigation
           window.location.href = url;
         }
       };

@@ -1367,3 +1367,55 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ─── Navigation Progress Bar ─────────────────────────────────── */
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.nav-progress.is-active {
+  opacity: 1;
+}
+
+.nav-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px var(--accent);
+  /* Default: slow crawl toward 72% */
+  transition: width 8s cubic-bezier(0.08, 0.04, 0, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-progress-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%);
+  animation: nav-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes nav-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Content area during fetch */
+.js-content {
+  transition: opacity 0.15s ease;
+}
+
+.js-content.is-navigating {
+  opacity: 0.5;
+  pointer-events: none;
+}
