@@ -1419,3 +1419,55 @@ tbody tr:hover {
   opacity: 0.5;
   pointer-events: none;
 }
+
+/* ─── Timestamp Hover Tooltip ──────────────────────────────────── */
+.js-tz-time {
+  position: relative;
+  cursor: default;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--muted);
+  text-underline-offset: 3px;
+}
+
+/* Tooltip bubble */
+.js-tz-time[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: var(--text);
+  color: var(--panel);
+  font-family: "SF Mono", "Roboto Mono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 4px 10px;
+  border-radius: 5px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 300;
+}
+
+/* Arrow */
+.js-tz-time[data-tooltip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 300;
+}
+
+.js-tz-time[data-tooltip]:hover::after,
+.js-tz-time[data-tooltip]:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

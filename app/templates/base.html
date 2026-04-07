@@ -295,7 +295,9 @@
         localStorage.setItem(TZ_KEY, tzName);
         document.querySelectorAll(".js-tz-time").forEach((el) => {
           const utcTime = el.dataset.utcTime;
-          if (utcTime) el.textContent = formatUtcTime(utcTime, tzName);
+          if (!utcTime) return;
+          el.textContent = formatUtcTime(utcTime, tzName);
+          el.dataset.tooltip = `UTC  ${formatUtcTime(utcTime, "UTC")}`;
         });
         document.querySelectorAll(".js-tz-select").forEach((sel) => {
           sel.value = tzName;
