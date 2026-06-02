@@ -802,6 +802,32 @@ textarea {
   gap: 10px;
 }
 
+/* The global form-control and .button rules leak into Monaco's own widgets
+   (find widget, suggest widget, etc.) and break their layout — e.g. the
+   find-widget buttons are <div class="button"> and would otherwise pick up
+   min-width:120px and the primary-button background. Neutralise the inherited
+   properties so Monaco's native styling applies. */
+.monaco-editor input,
+.monaco-editor textarea,
+.monaco-editor select,
+.monaco-editor button,
+.monaco-editor .button {
+  width: auto;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.monaco-editor .monaco-inputbox input,
+.monaco-editor .monaco-inputbox textarea {
+  width: 100%;
+}
+
 .json-editor {
   display: none;
   width: 100%;
